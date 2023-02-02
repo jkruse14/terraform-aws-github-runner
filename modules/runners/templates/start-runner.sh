@@ -43,15 +43,20 @@ fi
 ## Configure the runner
 
 echo "Get GH Runner config from AWS SSM"
-config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+config_param="$token_path"/"$instance_id"
+if [[ $config_param != /* ]]; then
+  config_param="/$config_param"
+fi
+
+config=$(aws ssm get-parameter --name "$config_param" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 while [[ -z "$config" ]]; do
   echo "Waiting for GH Runner config to become available in AWS SSM"
   sleep 1
-  config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
+  config=$(aws ssm get-parameter --name "$config_param" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 done
 
 echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+aws ssm delete-parameter --name "$config_param" --region "$region"
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"
